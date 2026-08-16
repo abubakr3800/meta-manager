@@ -57,17 +57,60 @@ final class MetaAuth
     public static function handleCallback(string $code, int $adminUserId): int
     {
         $graph = new GraphClient();
-
-        // 3a. code -> short-lived user access token
         $tokenResp = $graph->get('/oauth/access_token', [
             'client_id'     => META_APP_ID,
             'client_secret' => META_APP_SECRET,
             'redirect_uri'  => META_REDIRECT_URI,
             'code'          => $code,
         ]);
-        $shortLivedToken = $tokenResp['access_token'];
+        return self::persistFromShortLivedToken($adminUserId, $tokenResp['access_token']);
+    }
 
-        // 3b. short-lived -> long-lived user access token (~60 days)
+    /** JS SDK returned a short-lived user token from FB.login(). */
+    public static function handleJsAccessToken(int $adminUserId, string $accessToken): int
+    {
+        self::assertTokenForThisApp($accessToken);
+        return self::persistFromShortLivedToken($adminUserId, $accessToken);
+    }
+
+    /** JS SDK Facebook Login for Business returned an OAuth code. */
+    public static function handleJsCode(int $adminUserId, string $code): int
+    {
+        $graph = new GraphClient();
+        $params = [
+            'client_id'     => META_APP_ID,
+            'client_secret' => META_APP_SECRET,
+            'code'          => $code,
+        ];
+        $pageUri = sc_request_is_https()
+            ? ('https://' . ($_SERVER['HTTP_HOST'] ?? '') . app_path('index.php'))
+            : ('http://' . ($_SERVER['HTTP_HOST'] ?? '') . app_path('index.php'));
+        try {
+            $tokenResp = $graph->get('/oauth/access_token', $params);
+        } catch (Throwable $e) {
+            $params['redirect_uri'] = $pageUri;
+            $tokenResp = $graph->get('/oauth/access_token', $params);
+        }
+        return self::persistFromShortLivedToken($adminUserId, $tokenResp['access_token']);
+    }
+
+    private static function assertTokenForThisApp(string $accessToken): void
+    {
+        $graph = new GraphClient();
+        $debug = $graph->get('/debug_token', [
+            'input_token'  => $accessToken,
+            'access_token' => META_APP_ID . '|' . META_APP_SECRET,
+        ]);
+        $data = $debug['data'] ?? [];
+        if (empty($data['is_valid']) || (string)($data['app_id'] ?? '') !== (string)META_APP_ID) {
+            throw new RuntimeException('Facebook token is not valid for this app.');
+        }
+    }
+
+    private static function persistFromShortLivedToken(int $adminUserId, string $shortLivedToken): int
+    {
+        $graph = new GraphClient();
+
         $longResp = $graph->get('/oauth/access_token', [
             'grant_type'        => 'fb_exchange_token',
             'client_id'         => META_APP_ID,
@@ -75,9 +118,8 @@ final class MetaAuth
             'fb_exchange_token' => $shortLivedToken,
         ]);
         $longLivedToken = $longResp['access_token'];
-        $expiresIn      = $longResp['expires_in'] ?? 5184000; // ~60 days fallback
+        $expiresIn      = $longResp['expires_in'] ?? 5184000;
 
-        // 3c. who is this?
         $me = $graph->get('/me', ['access_token' => $longLivedToken, 'fields' => 'id,name']);
 
         $pdo = Database::pdo();
@@ -101,7 +143,6 @@ final class MetaAuth
 
         $identityId = (int)$pdo->lastInsertId();
         if ($identityId === 0) {
-            // ON DUPLICATE KEY UPDATE path — fetch existing id
             $find = $pdo->prepare('SELECT id FROM meta_identities WHERE admin_user_id = :a AND fb_user_id = :f');
             $find->execute(['a' => $adminUserId, 'f' => $me['id']]);
             $identityId = (int)$find->fetchColumn();

@@ -110,9 +110,10 @@ define('DB_CHARSET', 'utf8mb4');
 // ---------------------------------------------------------------------
 // Meta / Facebook App credentials
 // ---------------------------------------------------------------------
-define('META_APP_ID', env('SC_META_APP_ID', '1366651904982181'));
+define('META_APP_ID', env('SC_META_APP_ID', ''));
 define('META_APP_SECRET', env('SC_META_APP_SECRET', ''));
 define('META_GRAPH_VERSION', env('SC_META_GRAPH_VERSION', 'v26.0'));
+define('META_LOGIN_CONFIG_ID', env('SC_META_LOGIN_CONFIG_ID', ''));
 
 /**
  * Always match the URL the browser is on. A stale .env redirect (localhost

@@ -23,7 +23,7 @@ $identityId = Session::currentIdentityId();
       <?php if ($identityId): ?>
         <span class="badge badge-connected">Meta Connected</span>
       <?php else: ?>
-        <a href="oauth/login.php" class="btn btn-primary">Connect Meta Account</a>
+        <button type="button" class="btn btn-primary" id="btnConnectMeta">Connect Meta Account</button>
       <?php endif; ?>
       <a href="oauth/logout.php" class="btn btn-ghost">Sign Out</a>
     </div>
@@ -31,6 +31,12 @@ $identityId = Session::currentIdentityId();
 </header>
 
 <main class="content">
+  <?php if (!$identityId): ?>
+    <p class="alert alert-error" id="metaConnectError" hidden></p>
+  <?php endif; ?>
+  <?php if (!empty($_GET['connected'])): ?>
+    <p class="alert alert-success">Meta account connected.</p>
+  <?php endif; ?>
 
   <nav class="tabs" id="tabs">
     <button class="tab-btn is-active" data-tab="posts">Facebook Posts</button>
@@ -106,6 +112,25 @@ $identityId = Session::currentIdentityId();
   </div>
 </div>
 
+<script>
+window.SC_META = {
+  appId: <?= json_encode(META_APP_ID) ?>,
+  version: <?= json_encode(META_GRAPH_VERSION) ?>,
+  scopes: <?= json_encode(META_SCOPES) ?>,
+  configId: <?= json_encode(META_LOGIN_CONFIG_ID) ?>,
+  autoStart: false
+};
+window.fbAsyncInit = function () {
+  FB.init({
+    appId: window.SC_META.appId,
+    cookie: true,
+    xfbml: false,
+    version: window.SC_META.version
+  });
+};
+</script>
+<script async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
+<script src="assets/js/meta-login.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>
