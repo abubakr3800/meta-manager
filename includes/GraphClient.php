@@ -34,9 +34,7 @@ final class GraphClient
         // Allow absolute URLs (e.g. /oauth/access_token uses graph.facebook.com root, not versioned)
         $url = str_starts_with($path, 'http')
             ? $path
-            : (str_starts_with($path, '/oauth/')
-                ? 'https://graph.facebook.com' . $path
-                : $this->base . $path);
+            : $this->base . $path;
 
         $ch = curl_init();
 

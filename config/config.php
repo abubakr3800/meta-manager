@@ -112,13 +112,36 @@ define('DB_CHARSET', 'utf8mb4');
 // ---------------------------------------------------------------------
 define('META_APP_ID', env('SC_META_APP_ID', '1366651904982181'));
 define('META_APP_SECRET', env('SC_META_APP_SECRET', ''));
-define('META_GRAPH_VERSION', 'v21.0');
-define(
-    'META_REDIRECT_URI',
-    APP_IS_LOCAL
-        ? env('SC_META_REDIRECT_URI', 'http://localhost:8000/public/oauth/callback.php')
-        : env('SC_META_REMOTE_REDIRECT_URI', 'https://shortcircuit.company/meta-manager/public/oauth/callback.php')
-);
+define('META_GRAPH_VERSION', env('SC_META_GRAPH_VERSION', 'v26.0'));
+
+/**
+ * Always match the URL the browser is on. A stale .env redirect (localhost
+ * or /public/ without /meta-manager) is what Facebook reports as
+ * "domain isn't included in the app's domains".
+ */
+function sc_request_is_https(): bool
+{
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') {
+        return true;
+    }
+    return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
+function sc_meta_redirect_uri(): string
+{
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if ($host !== '') {
+        $scheme = sc_request_is_https() ? 'https' : 'http';
+        return $scheme . '://' . $host . app_path('oauth/callback.php');
+    }
+    return APP_IS_LOCAL
+        ? (env('SC_META_REDIRECT_URI', 'http://localhost:8000/public/oauth/callback.php') ?? '')
+        : (env('SC_META_REMOTE_REDIRECT_URI', 'https://shortcircuit.company/meta-manager/public/oauth/callback.php') ?? '');
+}
+define('META_REDIRECT_URI', sc_meta_redirect_uri());
 
 define('META_SCOPES', implode(',', [
     'pages_show_list',

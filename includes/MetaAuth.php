@@ -28,6 +28,10 @@ final class MetaAuth
             'scope'         => META_SCOPES,
             'response_type' => 'code',
         ];
+        $configId = env('SC_META_LOGIN_CONFIG_ID');
+        if ($configId) {
+            $params['config_id'] = $configId;
+        }
 
         return 'https://www.facebook.com/' . META_GRAPH_VERSION . '/dialog/oauth?' . http_build_query($params);
     }
