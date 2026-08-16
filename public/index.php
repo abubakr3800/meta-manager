@@ -31,8 +31,12 @@ $identityId = Session::currentIdentityId();
 </header>
 
 <main class="content">
+  <?php if (!empty($_GET['meta_error'])): ?>
+    <p class="alert alert-error"><?= htmlspecialchars((string)$_GET['meta_error']) ?></p>
+  <?php endif; ?>
   <?php if (!$identityId): ?>
     <p class="alert alert-error" id="metaConnectError" hidden></p>
+    <p class="muted">Facebook App ID in use: <code><?= htmlspecialchars(META_APP_ID) ?></code> — App Domains must be set on <em>this</em> app under Settings → Basic, not Use cases.</p>
   <?php endif; ?>
   <?php if (!empty($_GET['connected'])): ?>
     <p class="alert alert-success">Meta account connected.</p>

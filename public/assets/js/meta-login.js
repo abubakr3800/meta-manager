@@ -25,23 +25,26 @@
       scope: cfg.scopes || '',
       return_scopes: true,
       auth_type: 'rerequest',
+      display: 'popup',
     };
   }
 
-  async function sendToServer(payload) {
+  function sendToServer(payload) {
     const connectUrl = cfg.connectUrl || 'api/meta_connect.php';
-    const res = await fetch(connectUrl, {
+    return fetch(connectUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to save Meta connection');
+        }
+      });
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to save Meta connection');
-    }
   }
 
-  async function onLoginResponse(response) {
+  function onLoginResponse(response) {
     if (!response || response.status !== 'connected' || !response.authResponse) {
       const msg = response && response.status === 'unknown'
         ? 'Facebook login was cancelled or blocked. Allow pop-ups and try again.'
@@ -50,18 +53,20 @@
       return;
     }
     const auth = response.authResponse;
-    try {
-      if (auth.code) {
-        await sendToServer({ code: auth.code });
-      } else if (auth.accessToken) {
-        await sendToServer({ accessToken: auth.accessToken });
-      } else {
-        throw new Error('Facebook did not return a token or code.');
-      }
-      window.location.href = cfg.redirectTo || 'index.php?connected=1';
-    } catch (e) {
-      showError(e.message || String(e));
+    var payload = null;
+    if (auth.code) {
+      payload = { code: auth.code };
+    } else if (auth.accessToken) {
+      payload = { accessToken: auth.accessToken };
+    } else {
+      showError('Facebook did not return a token or code.');
+      return;
     }
+    sendToServer(payload).then(function () {
+      window.location.href = cfg.redirectTo || 'index.php?connected=1';
+    }).catch(function (e) {
+      showError(e.message || String(e));
+    });
   }
 
   function connect() {
