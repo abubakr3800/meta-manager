@@ -21,6 +21,8 @@ try {
                     $scopes = '';
                 }
                 $warning = 'Facebook returned no Pages. Granted permissions: [' . ($scopes ?: 'none') . ']. Edit configuration ' . META_LOGIN_CONFIG_ID . ': enable Pages as an asset and pages_show_list. Then click Reconnect Meta and in the popup select your Business + every Page.';
+            } elseif (count($pages) === 1) {
+                $warning = 'Only 1 Page was granted. Facebook Login for Business includes only the Pages you tick in the popup. Click Reconnect Meta and select every Page (and the Business portfolio).';
             }
         } catch (GraphApiException $e) {
             $warning = $e->getCode() === 200

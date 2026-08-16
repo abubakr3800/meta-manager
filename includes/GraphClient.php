@@ -19,6 +19,22 @@ final class GraphClient
         return $this->request('GET', $path, $params);
     }
 
+    /** Follow Graph paging.next until every item is collected. */
+    public function getPaged(string $path, array $params = []): array
+    {
+        $all = [];
+        $data = $this->get($path, $params);
+        while (true) {
+            $all = array_merge($all, $data['data'] ?? []);
+            $next = (string)($data['paging']['next'] ?? '');
+            if ($next === '') {
+                break;
+            }
+            $data = $this->get($next);
+        }
+        return $all;
+    }
+
     public function post(string $path, array $params = []): array
     {
         return $this->request('POST', $path, $params);

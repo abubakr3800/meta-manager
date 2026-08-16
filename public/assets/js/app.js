@@ -64,6 +64,9 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   if (btn.dataset.tab === 'ads' && !state.adAccounts.length) {
     loadAdAccounts().catch((err) => toast(err.message, true));
   }
+  if (btn.dataset.tab === 'leads') {
+    loadLeadForms().catch((err) => toast(err.message, true));
+  }
 });
 
 // ----------------------------------------------------------------------
@@ -135,7 +138,9 @@ pageSelect.addEventListener('change', () => {
   state.currentPageId = pageSelect.value || null;
   loadPosts();
   loadInstagramMedia();
-  loadLeadForms();
+  if (document.getElementById('panel-leads')?.classList.contains('is-active')) {
+    loadLeadForms().catch((err) => toast(err.message, true));
+  }
 });
 
 // ----------------------------------------------------------------------
@@ -347,8 +352,11 @@ const leadsTbody = document.querySelector('#leadsTable tbody');
 async function loadLeadForms() {
   leadFormSelect.innerHTML = '<option value="">— Select Form —</option>';
   if (!state.currentPageId) return;
-  const { forms } = await api(`api/leads.php?page_id=${state.currentPageId}`);
-  state.leadForms = forms || [];
+  const data = await api(`api/leads.php?page_id=${state.currentPageId}`);
+  if (data.warning) {
+    toast(data.warning, true);
+  }
+  state.leadForms = data.forms || [];
   leadFormSelect.innerHTML += state.leadForms
     .map(f => `<option value="${f.id}">${escapeHtml(f.name || f.id)}</option>`).join('');
 }

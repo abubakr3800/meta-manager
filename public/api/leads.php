@@ -7,8 +7,17 @@ try {
     // List lead forms for a page, syncing from Graph first
     if ($method === 'GET' && isset($_GET['page_id']) && !isset($_GET['form_id'])) {
         $pageId = (int)$_GET['page_id'];
-        $forms = $api->syncLeadForms($pageId);
-        respond(['forms' => $forms]);
+        try {
+            respond(['forms' => $api->syncLeadForms($pageId)]);
+        } catch (GraphApiException $e) {
+            if ($e->getCode() === 200) {
+                respond([
+                    'forms'   => [],
+                    'warning' => 'Missing pages_manage_ads or leads_retrieval. Add both to Login for Business configuration ' . META_LOGIN_CONFIG_ID . ', then Reconnect Meta.',
+                ]);
+            }
+            throw $e;
+        }
     }
 
     // List leads for a given local form id

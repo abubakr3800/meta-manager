@@ -206,12 +206,11 @@ final class MetaAuth
         };
 
         try {
-            $accounts = $graph->get('/me/accounts', [
+            foreach ($graph->getPaged('/me/accounts', [
                 'access_token' => $userAccessToken,
                 'fields'       => 'id,name,category,access_token',
-                'limit'        => 200,
-            ]);
-            foreach ($accounts['data'] ?? [] as $page) {
+                'limit'        => 100,
+            ]) as $page) {
                 $collect($page);
             }
         } catch (Throwable $e) {
@@ -219,20 +218,19 @@ final class MetaAuth
         }
 
         try {
-            $businesses = $graph->get('/me/businesses', [
+            $businesses = $graph->getPaged('/me/businesses', [
                 'access_token' => $userAccessToken,
                 'fields'       => 'id,name',
                 'limit'        => 50,
             ]);
-            foreach ($businesses['data'] ?? [] as $biz) {
+            foreach ($businesses as $biz) {
                 foreach (['owned_pages', 'client_pages'] as $edge) {
                     try {
-                        $bpages = $graph->get('/' . $biz['id'] . '/' . $edge, [
+                        foreach ($graph->getPaged('/' . $biz['id'] . '/' . $edge, [
                             'access_token' => $userAccessToken,
                             'fields'       => 'id,name,category,access_token',
-                            'limit'        => 200,
-                        ]);
-                        foreach ($bpages['data'] ?? [] as $page) {
+                            'limit'        => 100,
+                        ]) as $page) {
                             $collect($page);
                         }
                     } catch (Throwable $e) {
