@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------
 // Database
 // ---------------------------------------------------------------------
-define('DB_HOST', getenv('SC_DB_HOST') ?: '127.0.0.1');
+define('DB_HOST', getenv('SC_DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('SC_DB_NAME') ?: 'sc_meta_manager');
 define('DB_USER', getenv('SC_DB_USER') ?: 'root');
 define('DB_PASS', getenv('SC_DB_PASS') ?: '');
