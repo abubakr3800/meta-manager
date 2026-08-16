@@ -1,0 +1,12 @@
+# Deny all direct access to the project root; only /public should be
+# exposed by your webserver's document root. If your host forces the
+# whole repo to be web-accessible, this blocks the sensitive folders.
+<IfModule mod_authz_core.c>
+  <FilesMatch ".*">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order deny,allow
+  Deny from all
+</IfModule>
