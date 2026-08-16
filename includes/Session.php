@@ -15,8 +15,7 @@ final class Session
     {
         self::start();
         if (empty($_SESSION['admin_user_id'])) {
-            header('Location: /public/login.php');
-            exit;
+            app_redirect('login.php');
         }
         return (int)$_SESSION['admin_user_id'];
     }

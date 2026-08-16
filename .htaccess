@@ -1,5 +1,4 @@
 # Protect config/includes/sql/.env/.git. Do not deny public/.
-# If your host strips leading dots, rename this file to .htaccess
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteRule ^(config|includes|sql)(/|$) - [F,L]

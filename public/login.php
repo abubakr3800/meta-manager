@@ -15,8 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($user && password_verify($pass, $user['password_hash'])) {
         Session::login((int)$user['id']);
-        header('Location: /public/index.php');
-        exit;
+        app_redirect('index.php');
     }
     $error = 'Invalid email or password.';
 }

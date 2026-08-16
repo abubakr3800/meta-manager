@@ -21,8 +21,7 @@ if (!$code || !$state || !MetaAuth::consumeState($state, $adminId)) {
 
 try {
     MetaAuth::handleCallback($code, $adminId);
-    header('Location: /public/index.php?connected=1');
-    exit;
+    app_redirect('index.php?connected=1');
 } catch (Throwable $e) {
     http_response_code(500);
     echo 'Failed to complete Meta login: ' . htmlspecialchars($e->getMessage());
