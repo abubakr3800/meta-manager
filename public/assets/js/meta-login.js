@@ -52,7 +52,7 @@
       return;
     }
     if (response.status === 'connected') {
-      if (cfg.needsConnect) {
+      if (cfg.needsConnect || fromLogin) {
         persistAuth(response.authResponse);
       }
       return;
@@ -82,7 +82,7 @@
       ? { config_id: cfg.configId }
       : { scope: 'public_profile,email' };
     FB.login(function (response) {
-      statusChangeCallback(response);
+      statusChangeCallback(response, true);
     }, options);
   };
 })();

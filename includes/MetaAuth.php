@@ -138,7 +138,7 @@ final class MetaAuth
             'name'   => $me['name'] ?? null,
             'tok'    => Encryption::encrypt($longLivedToken),
             'secs'   => $expiresIn,
-            'scopes' => META_SCOPES,
+            'scopes' => self::fetchGrantedScopes($longLivedToken),
         ]);
 
         $identityId = (int)$pdo->lastInsertId();
@@ -148,9 +148,30 @@ final class MetaAuth
             $identityId = (int)$find->fetchColumn();
         }
 
-        self::syncPages($identityId, $longLivedToken);
+        try {
+            self::syncPages($identityId, $longLivedToken);
+        } catch (Throwable $e) {
+            // Identity is saved; missing pages_show_list shows up as #200 until they reconnect
+        }
 
         return $identityId;
+    }
+
+    public static function fetchGrantedScopes(string $userAccessToken): string
+    {
+        try {
+            $graph = new GraphClient();
+            $data = $graph->get('/me/permissions', ['access_token' => $userAccessToken]);
+            $granted = [];
+            foreach ($data['data'] ?? [] as $row) {
+                if (($row['status'] ?? '') === 'granted' && !empty($row['permission'])) {
+                    $granted[] = $row['permission'];
+                }
+            }
+            return implode(',', $granted);
+        } catch (Throwable $e) {
+            return META_SCOPES;
+        }
     }
 
     /** Pull all Pages the user manages and store their (non-expiring) Page tokens. */
@@ -159,7 +180,7 @@ final class MetaAuth
         $graph = new GraphClient();
         $pages = $graph->get('/me/accounts', [
             'access_token' => $userAccessToken,
-            'fields'       => 'id,name,category,access_token,instagram_business_account',
+            'fields'       => 'id,name,category,access_token',
             'limit'        => 200,
         ]);
 
@@ -175,12 +196,25 @@ final class MetaAuth
         );
 
         foreach ($pages['data'] ?? [] as $page) {
+            if (empty($page['access_token'])) {
+                continue;
+            }
+            $igId = null;
+            try {
+                $ig = $graph->get('/' . $page['id'], [
+                    'fields'       => 'instagram_business_account',
+                    'access_token' => $page['access_token'],
+                ]);
+                $igId = $ig['instagram_business_account']['id'] ?? null;
+            } catch (Throwable $e) {
+                // Instagram permission not in the Login for Business config yet
+            }
             $stmt->execute([
                 'identity' => $identityId,
                 'pid'      => $page['id'],
                 'name'     => $page['name'] ?? null,
                 'tok'      => Encryption::encrypt($page['access_token']),
-                'ig'       => $page['instagram_business_account']['id'] ?? null,
+                'ig'       => $igId,
                 'cat'      => $page['category'] ?? null,
             ]);
         }

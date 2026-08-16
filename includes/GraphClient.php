@@ -67,9 +67,16 @@ final class GraphClient
         }
 
         if (isset($data['error'])) {
-            $msg  = $data['error']['message'] ?? 'Unknown Graph API error';
-            $code = $data['error']['code'] ?? 0;
-            $sub  = $data['error']['error_subcode'] ?? null;
+            $err  = $data['error'];
+            $msg  = $err['message'] ?? 'Unknown Graph API error';
+            if (!empty($err['error_user_msg'])) {
+                $msg .= ' — ' . $err['error_user_msg'];
+            }
+            $code = $err['code'] ?? 0;
+            $sub  = $err['error_subcode'] ?? null;
+            if ((int)$code === 200) {
+                $msg .= ' Add the missing permission to the Facebook Login for Business configuration, then click Reconnect Meta.';
+            }
             throw new GraphApiException($msg, (int)$code, $sub);
         }
 

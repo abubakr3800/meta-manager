@@ -4,6 +4,12 @@ require_once __DIR__ . '/../config/config.php';
 
 $adminId = Session::requireLogin();
 $identityId = Session::currentIdentityId();
+$grantedScopes = '';
+if ($identityId) {
+    $stmt = Database::pdo()->prepare('SELECT scopes FROM meta_identities WHERE id = :id');
+    $stmt->execute(['id' => $identityId]);
+    $grantedScopes = (string)$stmt->fetchColumn();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -23,6 +29,13 @@ $identityId = Session::currentIdentityId();
     <div class="topbar-actions">
       <?php if ($identityId): ?>
         <span class="badge badge-connected">Meta Connected</span>
+        <fb:login-button
+          size="small"
+          onlogin="checkLoginState();"
+          <?php if (META_LOGIN_CONFIG_ID !== ''): ?>
+          config_id="<?= htmlspecialchars(META_LOGIN_CONFIG_ID) ?>"
+          <?php endif; ?>
+        >Reconnect Meta</fb:login-button>
       <?php else: ?>
         <fb:login-button
           size="large"
@@ -42,6 +55,10 @@ $identityId = Session::currentIdentityId();
 <main class="content">
   <?php if (!empty($_GET['meta_error'])): ?>
     <p class="alert alert-error"><?= htmlspecialchars((string)$_GET['meta_error']) ?></p>
+  <?php endif; ?>
+  <p class="alert alert-error" id="metaConnectError" hidden></p>
+  <?php if ($identityId && $grantedScopes !== ''): ?>
+    <p class="muted">Granted Facebook permissions: <code><?= htmlspecialchars($grantedScopes) ?></code>. If a tab shows Missing Permissions, add that permission to the Login for Business configuration, then click Reconnect Meta.</p>
   <?php endif; ?>
   <?php if (!$identityId): ?>
     <p class="alert alert-error" id="metaConnectError" hidden></p>
