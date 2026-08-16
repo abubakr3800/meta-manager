@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head></head>
+  <body>
+    <h2>Add Facebook Login to your webpage</h2>
+
+    <!-- Set the element id for the JSON response -->
+    <p id="profile"></p>
+    <button onclick="loginWithFacebook()">Log in with Facebook</button>
+
+    <script>
+      // Initialize the Facebook JavaScript SDK, but wait till it's loaded
+      window.fbAsyncInit = function () {
+        FB.init({
+          appId: "{your-facebook-app-id}",
+          xfbml: true,
+          version: "{the-graph-api-version-for-your-app}",
+        });
+      };
+
+      // Handle clicks on the "Log in with Facebook" button
+      function loginWithFacebook() {
+        FB.login(function (response) {
+          if (response.authResponse) {
+            console.log("Welcome!  Fetching your information.... ");
+            // After successful login, we can fetch the user's information
+            FB.api("/me", { fields: "name, email" }, function (response) {
+              document.getElementById("profile").innerHTML =
+                "Good to see you, " +
+                response.name +
+                ". i see your email address is " +
+                response.email;
+            });
+          } else {
+            console.log("User cancelled login or did not fully authorize.");
+          }
+        });
+      }
+
+      // Load the JavaScript SDK asynchronously
+      (function (d, s, id) {
+        var js,
+          fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) {
+          return;
+        }
+        js = d.createElement(s);
+        js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+      })(document, "script", "facebook-jssdk");
+    </script>
+  </body>
+</html>

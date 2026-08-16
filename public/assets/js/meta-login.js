@@ -1,10 +1,10 @@
-/* Meta JavaScript SDK login — Connect Meta Account */
+/* Official Facebook Login for websites: getLoginStatus + login button callback.
+   FB.login callback must be a normal function (not async). */
 (function () {
-  const cfg = window.SC_META || {};
-  const btn = document.getElementById('btnConnectMeta');
-  const errEl = document.getElementById('metaConnectError');
+  var cfg = window.SC_META || {};
 
   function showError(message) {
+    var errEl = document.getElementById('metaConnectError');
     if (!errEl) {
       window.alert(message);
       return;
@@ -13,24 +13,8 @@
     errEl.textContent = message;
   }
 
-  function loginOptions() {
-    if (cfg.configId) {
-      return {
-        config_id: cfg.configId,
-        response_type: 'code',
-        override_default_response_type: true,
-      };
-    }
-    return {
-      scope: cfg.scopes || '',
-      return_scopes: true,
-      auth_type: 'rerequest',
-      display: 'popup',
-    };
-  }
-
   function sendToServer(payload) {
-    const connectUrl = cfg.connectUrl || 'api/meta_connect.php';
+    var connectUrl = cfg.connectUrl || 'api/meta_connect.php';
     return fetch(connectUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,21 +28,15 @@
     });
   }
 
-  function onLoginResponse(response) {
-    if (!response || response.status !== 'connected' || !response.authResponse) {
-      const msg = response && response.status === 'unknown'
-        ? 'Facebook login was cancelled or blocked. Allow pop-ups and try again.'
-        : 'Facebook login did not complete.';
-      showError(msg);
+  function persistAuth(authResponse) {
+    if (!authResponse) {
+      showError('Facebook did not return a token.');
       return;
     }
-    const auth = response.authResponse;
-    var payload = null;
-    if (auth.code) {
-      payload = { code: auth.code };
-    } else if (auth.accessToken) {
-      payload = { accessToken: auth.accessToken };
-    } else {
+    var payload = authResponse.code
+      ? { code: authResponse.code }
+      : (authResponse.accessToken ? { accessToken: authResponse.accessToken } : null);
+    if (!payload) {
       showError('Facebook did not return a token or code.');
       return;
     }
@@ -69,31 +47,42 @@
     });
   }
 
-  function connect() {
-    if (typeof FB === 'undefined') {
-      showError('Facebook SDK did not load. Check that this domain is in Allowed Domains for the JavaScript SDK.');
+  window.statusChangeCallback = function (response, fromLogin) {
+    if (!response) {
       return;
     }
-    FB.login(onLoginResponse, loginOptions());
-  }
-
-  window.scMetaConnect = connect;
-
-  if (btn) {
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      connect();
-    });
-  }
-
-  if (cfg.autoStart) {
-    const start = function () {
-      if (typeof FB !== 'undefined') {
-        connect();
-      } else {
-        setTimeout(start, 200);
+    if (response.status === 'connected') {
+      if (cfg.needsConnect) {
+        persistAuth(response.authResponse);
       }
-    };
-    start();
-  }
+      return;
+    }
+    if (!fromLogin) {
+      return;
+    }
+    if (response.status === 'not_authorized') {
+      showError('Logged into Facebook, but this app is not authorized yet. Click Continue with Facebook.');
+      return;
+    }
+    showError('Not logged into Facebook. Click Continue with Facebook.');
+  };
+
+  window.checkLoginState = function () {
+    FB.getLoginStatus(function (response) {
+      statusChangeCallback(response, true);
+    });
+  };
+
+  window.scMetaConnect = function () {
+    if (typeof FB === 'undefined') {
+      showError('Facebook SDK did not load. Enable Login with the JavaScript SDK and add https://shortcircuit.company to Allowed Domains.');
+      return;
+    }
+    var options = cfg.configId
+      ? { config_id: cfg.configId }
+      : { scope: 'public_profile,email' };
+    FB.login(function (response) {
+      statusChangeCallback(response);
+    }, options);
+  };
 })();

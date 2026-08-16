@@ -14,6 +14,7 @@ $identityId = Session::currentIdentityId();
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
+<div id="fb-root"></div>
 
 <header class="topbar">
   <div class="topbar-inner">
@@ -23,7 +24,15 @@ $identityId = Session::currentIdentityId();
       <?php if ($identityId): ?>
         <span class="badge badge-connected">Meta Connected</span>
       <?php else: ?>
-        <button type="button" class="btn btn-primary" id="btnConnectMeta">Connect Meta Account</button>
+        <fb:login-button
+          size="large"
+          onlogin="checkLoginState();"
+          <?php if (META_LOGIN_CONFIG_ID !== ''): ?>
+          config_id="<?= htmlspecialchars(META_LOGIN_CONFIG_ID) ?>"
+          <?php else: ?>
+          scope="public_profile,email"
+          <?php endif; ?>
+        ></fb:login-button>
       <?php endif; ?>
       <a href="oauth/logout.php" class="btn btn-ghost">Sign Out</a>
     </div>
@@ -36,7 +45,10 @@ $identityId = Session::currentIdentityId();
   <?php endif; ?>
   <?php if (!$identityId): ?>
     <p class="alert alert-error" id="metaConnectError" hidden></p>
-    <p class="muted">Facebook App ID in use: <code><?= htmlspecialchars(META_APP_ID) ?></code> — App Domains must be set on <em>this</em> app under Settings → Basic, not Use cases.</p>
+    <p class="muted">Facebook App ID in use: <code><?= htmlspecialchars(META_APP_ID) ?></code></p>
+    <?php if (META_LOGIN_CONFIG_ID === ''): ?>
+      <p class="alert alert-error">Missing Login for Business Config ID. In the app dashboard add use case <strong>Facebook Login for Business</strong>, create a <strong>User access token</strong> configuration with Pages / Instagram / Ads / Leads permissions, then put the Config ID in <code>.env</code> as <code>SC_META_LOGIN_CONFIG_ID</code>.</p>
+    <?php endif; ?>
   <?php endif; ?>
   <?php if (!empty($_GET['connected'])): ?>
     <p class="alert alert-success">Meta account connected.</p>
@@ -120,21 +132,32 @@ $identityId = Session::currentIdentityId();
 window.SC_META = {
   appId: <?= json_encode(META_APP_ID) ?>,
   version: <?= json_encode(META_GRAPH_VERSION) ?>,
-  scopes: <?= json_encode(META_SCOPES) ?>,
   configId: <?= json_encode(META_LOGIN_CONFIG_ID) ?>,
-  autoStart: false
+  needsConnect: <?= $identityId ? 'false' : 'true' ?>
 };
+</script>
+<script src="assets/js/meta-login.js"></script>
+<script>
 window.fbAsyncInit = function () {
   FB.init({
     appId: window.SC_META.appId,
     cookie: true,
-    xfbml: false,
+    xfbml: true,
     version: window.SC_META.version
   });
+  FB.AppEvents.logPageView();
+  FB.getLoginStatus(function (response) {
+    statusChangeCallback(response, false);
+  });
 };
+(function (d, s, id) {
+  var js, fjs = d.getElementsByTagName(s)[0];
+  if (d.getElementById(id)) { return; }
+  js = d.createElement(s); js.id = id;
+  js.src = 'https://connect.facebook.net/en_US/sdk.js';
+  fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
 </script>
-<script async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
-<script src="assets/js/meta-login.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>
