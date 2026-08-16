@@ -244,8 +244,11 @@ const adAccountSelect = document.getElementById('adAccountSelect');
 const campaignsTbody = document.querySelector('#campaignsTable tbody');
 
 async function loadAdAccounts() {
-  const { accounts } = await api('api/ad_accounts.php');
-  state.adAccounts = accounts || [];
+  const data = await api('api/ad_accounts.php');
+  if (data.warning) {
+    toast(data.warning, true);
+  }
+  state.adAccounts = data.accounts || [];
   adAccountSelect.innerHTML = '<option value="">— Select Ad Account —</option>' +
     state.adAccounts.map(a => `<option value="${a.act_id}">${escapeHtml(a.account_name || a.act_id)}</option>`).join('');
 }

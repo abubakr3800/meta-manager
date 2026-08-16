@@ -7,14 +7,23 @@ if (!$identityId) {
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        // Force a re-sync from Graph API
         respond(['accounts' => $api->syncAdAccounts($identityId)]);
     }
     $accounts = $api->listAdAccounts($identityId);
-    if (empty($accounts)) {
-        $accounts = $api->syncAdAccounts($identityId);
+    if (!empty($accounts)) {
+        respond(['accounts' => $accounts]);
     }
-    respond(['accounts' => $accounts]);
+    try {
+        respond(['accounts' => $api->syncAdAccounts($identityId)]);
+    } catch (GraphApiException $e) {
+        if ($e->getCode() === 200) {
+            respond([
+                'accounts' => [],
+                'warning'  => 'Missing ads_read. In Facebook Login for Business configuration ' . META_LOGIN_CONFIG_ID . ' add ads_read and ads_management, save, then Reconnect Meta.',
+            ]);
+        }
+        throw $e;
+    }
 } catch (Throwable $e) {
     respond_error($e, 500);
 }
