@@ -51,38 +51,48 @@
     if (!response) {
       return;
     }
-    if (response.status === 'connected') {
-      if (cfg.needsConnect || fromLogin) {
-        persistAuth(response.authResponse);
-      }
+    if (response.status === 'connected' && fromLogin) {
+      persistAuth(response.authResponse);
       return;
     }
     if (!fromLogin) {
       return;
     }
     if (response.status === 'not_authorized') {
-      showError('Logged into Facebook, but this app is not authorized yet. Click Continue with Facebook.');
+      showError('Logged into Facebook, but this app is not authorized yet. Click Connect Meta Account.');
       return;
     }
-    showError('Not logged into Facebook. Click Continue with Facebook.');
+    showError('Facebook login was cancelled. Click Connect Meta Account and select your Pages.');
   };
 
   window.checkLoginState = function () {
-    FB.getLoginStatus(function (response) {
-      statusChangeCallback(response, true);
-    });
+    window.scMetaConnect();
   };
 
   window.scMetaConnect = function () {
+    if (!cfg.configId) {
+      showError('Set SC_META_LOGIN_CONFIG_ID in .env from Facebook Login for Business → Configurations.');
+      return;
+    }
     if (typeof FB === 'undefined') {
       showError('Facebook SDK did not load. Enable Login with the JavaScript SDK and add https://shortcircuit.company to Allowed Domains.');
       return;
     }
-    var options = cfg.configId
-      ? { config_id: cfg.configId }
-      : { scope: 'public_profile,email' };
     FB.login(function (response) {
       statusChangeCallback(response, true);
-    }, options);
+    }, {
+      config_id: cfg.configId,
+      response_type: 'code',
+      override_default_response_type: true,
+      auth_type: 'rerequest'
+    });
   };
+
+  var btn = document.getElementById('btnConnectMeta');
+  if (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      window.scMetaConnect();
+    });
+  }
 })();

@@ -29,23 +29,9 @@ if ($identityId) {
     <div class="topbar-actions">
       <?php if ($identityId): ?>
         <span class="badge badge-connected">Meta Connected</span>
-        <fb:login-button
-          size="small"
-          onlogin="checkLoginState();"
-          <?php if (META_LOGIN_CONFIG_ID !== ''): ?>
-          config_id="<?= htmlspecialchars(META_LOGIN_CONFIG_ID) ?>"
-          <?php endif; ?>
-        >Reconnect Meta</fb:login-button>
+        <button type="button" class="btn btn-ghost" id="btnConnectMeta">Reconnect Meta</button>
       <?php else: ?>
-        <fb:login-button
-          size="large"
-          onlogin="checkLoginState();"
-          <?php if (META_LOGIN_CONFIG_ID !== ''): ?>
-          config_id="<?= htmlspecialchars(META_LOGIN_CONFIG_ID) ?>"
-          <?php else: ?>
-          scope="public_profile,email"
-          <?php endif; ?>
-        ></fb:login-button>
+        <button type="button" class="btn btn-primary" id="btnConnectMeta">Connect Meta Account</button>
       <?php endif; ?>
       <a href="oauth/logout.php" class="btn btn-ghost">Sign Out</a>
     </div>
@@ -61,7 +47,6 @@ if ($identityId) {
     <p class="muted">Granted Facebook permissions: <code><?= htmlspecialchars($grantedScopes) ?></code>. If a tab shows Missing Permissions, add that permission to the Login for Business configuration, then click Reconnect Meta.</p>
   <?php endif; ?>
   <?php if (!$identityId): ?>
-    <p class="alert alert-error" id="metaConnectError" hidden></p>
     <p class="muted">Facebook App ID in use: <code><?= htmlspecialchars(META_APP_ID) ?></code></p>
     <?php if (META_LOGIN_CONFIG_ID === ''): ?>
       <p class="alert alert-error">Missing Login for Business Config ID. In the app dashboard add use case <strong>Facebook Login for Business</strong>, create a <strong>User access token</strong> configuration with Pages / Instagram / Ads / Leads permissions, then put the Config ID in <code>.env</code> as <code>SC_META_LOGIN_CONFIG_ID</code>.</p>

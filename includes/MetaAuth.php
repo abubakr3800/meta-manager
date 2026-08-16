@@ -174,15 +174,64 @@ final class MetaAuth
         }
     }
 
-    /** Pull all Pages the user manages and store their (non-expiring) Page tokens. */
+    /** Pull Pages the user manages (personal accounts + Business Manager) and store Page tokens. */
     public static function syncPages(int $identityId, string $userAccessToken): void
     {
         $graph = new GraphClient();
-        $pages = $graph->get('/me/accounts', [
-            'access_token' => $userAccessToken,
-            'fields'       => 'id,name,category,access_token',
-            'limit'        => 200,
-        ]);
+        $byId = [];
+
+        $collect = static function (array $page) use (&$byId): void {
+            $id = (string)($page['id'] ?? '');
+            if ($id === '') {
+                return;
+            }
+            if (!isset($byId[$id])) {
+                $byId[$id] = $page;
+                return;
+            }
+            if (empty($byId[$id]['access_token']) && !empty($page['access_token'])) {
+                $byId[$id] = array_merge($byId[$id], $page);
+            }
+        };
+
+        try {
+            $accounts = $graph->get('/me/accounts', [
+                'access_token' => $userAccessToken,
+                'fields'       => 'id,name,category,access_token',
+                'limit'        => 200,
+            ]);
+            foreach ($accounts['data'] ?? [] as $page) {
+                $collect($page);
+            }
+        } catch (Throwable $e) {
+            // pages_show_list missing — try businesses next
+        }
+
+        try {
+            $businesses = $graph->get('/me/businesses', [
+                'access_token' => $userAccessToken,
+                'fields'       => 'id,name',
+                'limit'        => 50,
+            ]);
+            foreach ($businesses['data'] ?? [] as $biz) {
+                foreach (['owned_pages', 'client_pages'] as $edge) {
+                    try {
+                        $bpages = $graph->get('/' . $biz['id'] . '/' . $edge, [
+                            'access_token' => $userAccessToken,
+                            'fields'       => 'id,name,category,access_token',
+                            'limit'        => 200,
+                        ]);
+                        foreach ($bpages['data'] ?? [] as $page) {
+                            $collect($page);
+                        }
+                    } catch (Throwable $e) {
+                        // no access to this business edge
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // business_management missing
+        }
 
         $pdo = Database::pdo();
         $stmt = $pdo->prepare(
@@ -195,25 +244,39 @@ final class MetaAuth
                category = VALUES(category)'
         );
 
-        foreach ($pages['data'] ?? [] as $page) {
-            if (empty($page['access_token'])) {
+        foreach ($byId as $page) {
+            $token = $page['access_token'] ?? '';
+            if ($token === '') {
+                try {
+                    $tok = $graph->get('/' . $page['id'], [
+                        'fields'       => 'access_token,name,category',
+                        'access_token' => $userAccessToken,
+                    ]);
+                    $token = $tok['access_token'] ?? '';
+                    $page['name'] = $tok['name'] ?? ($page['name'] ?? null);
+                    $page['category'] = $tok['category'] ?? ($page['category'] ?? null);
+                } catch (Throwable $e) {
+                    continue;
+                }
+            }
+            if ($token === '') {
                 continue;
             }
             $igId = null;
             try {
                 $ig = $graph->get('/' . $page['id'], [
                     'fields'       => 'instagram_business_account',
-                    'access_token' => $page['access_token'],
+                    'access_token' => $token,
                 ]);
                 $igId = $ig['instagram_business_account']['id'] ?? null;
             } catch (Throwable $e) {
-                // Instagram permission not in the Login for Business config yet
+                // Instagram not granted
             }
             $stmt->execute([
                 'identity' => $identityId,
                 'pid'      => $page['id'],
                 'name'     => $page['name'] ?? null,
-                'tok'      => Encryption::encrypt($page['access_token']),
+                'tok'      => Encryption::encrypt($token),
                 'ig'       => $igId,
                 'cat'      => $page['category'] ?? null,
             ]);

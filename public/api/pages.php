@@ -14,7 +14,13 @@ try {
         try {
             $pages = $api->syncPagesFromGraph($identityId);
             if (empty($pages)) {
-                $warning = 'Facebook returned no Pages. In the Facebook login popup, select every Page (and the Business portfolio) you want to manage. Also add pages_show_list to Login for Business configuration ' . META_LOGIN_CONFIG_ID . ', then Reconnect Meta.';
+                $scopes = '';
+                try {
+                    $scopes = MetaAuth::fetchGrantedScopes(MetaAuth::getDecryptedUserToken($identityId));
+                } catch (Throwable $e) {
+                    $scopes = '';
+                }
+                $warning = 'Facebook returned no Pages. Granted permissions: [' . ($scopes ?: 'none') . ']. Edit configuration ' . META_LOGIN_CONFIG_ID . ': enable Pages as an asset and pages_show_list. Then click Reconnect Meta and in the popup select your Business + every Page.';
             }
         } catch (GraphApiException $e) {
             $warning = $e->getCode() === 200
