@@ -136,6 +136,8 @@ window.SC_META = {
   appId: <?= json_encode(META_APP_ID) ?>,
   version: <?= json_encode(META_GRAPH_VERSION) ?>,
   configId: <?= json_encode(META_LOGIN_CONFIG_ID) ?>,
+  connectUrl: <?= json_encode(app_path('api/meta_connect.php')) ?>,
+  redirectTo: <?= json_encode(app_path('index.php') . '?connected=1') ?>,
   needsConnect: <?= $identityId ? 'false' : 'true' ?>
 };
 </script>

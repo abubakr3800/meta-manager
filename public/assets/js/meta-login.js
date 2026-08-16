@@ -33,9 +33,11 @@
       showError('Facebook did not return a token.');
       return;
     }
-    var payload = authResponse.code
-      ? { code: authResponse.code }
-      : (authResponse.accessToken ? { accessToken: authResponse.accessToken } : null);
+    // User-token Login for Business returns accessToken.
+    // System-user configs return code (authorization-code grant).
+    var payload = authResponse.accessToken
+      ? { accessToken: authResponse.accessToken }
+      : (authResponse.code ? { code: authResponse.code } : null);
     if (!payload) {
       showError('Facebook did not return a token or code.');
       return;
@@ -78,12 +80,13 @@
       showError('Facebook SDK did not load. Enable Login with the JavaScript SDK and add https://shortcircuit.company to Allowed Domains.');
       return;
     }
+    // User access token configuration: config_id only.
+    // Do not set response_type=code — that is for System User tokens and
+    // makes /oauth/access_token return 400 for this config.
     FB.login(function (response) {
       statusChangeCallback(response, true);
     }, {
       config_id: cfg.configId,
-      response_type: 'code',
-      override_default_response_type: true,
       auth_type: 'rerequest'
     });
   };

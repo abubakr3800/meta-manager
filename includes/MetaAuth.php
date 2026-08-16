@@ -73,11 +73,11 @@ final class MetaAuth
         return self::persistFromShortLivedToken($adminUserId, $accessToken);
     }
 
-    /** JS SDK Facebook Login for Business returned an OAuth code. */
+    /** JS SDK System User Login for Business returned an OAuth code. */
     public static function handleJsCode(int $adminUserId, string $code): int
     {
         $graph = new GraphClient();
-        $params = [
+        $base = [
             'client_id'     => META_APP_ID,
             'client_secret' => META_APP_SECRET,
             'code'          => $code,
@@ -85,13 +85,24 @@ final class MetaAuth
         $pageUri = sc_request_is_https()
             ? ('https://' . ($_SERVER['HTTP_HOST'] ?? '') . app_path('index.php'))
             : ('http://' . ($_SERVER['HTTP_HOST'] ?? '') . app_path('index.php'));
-        try {
-            $tokenResp = $graph->get('/oauth/access_token', $params);
-        } catch (Throwable $e) {
-            $params['redirect_uri'] = $pageUri;
-            $tokenResp = $graph->get('/oauth/access_token', $params);
+        $attempts = [
+            $base,
+            $base + ['redirect_uri' => ''],
+            $base + ['redirect_uri' => $pageUri],
+            $base + ['redirect_uri' => META_REDIRECT_URI],
+        ];
+        $last = null;
+        foreach ($attempts as $params) {
+            try {
+                $tokenResp = $graph->post('/oauth/access_token', $params);
+                if (!empty($tokenResp['access_token'])) {
+                    return self::persistFromShortLivedToken($adminUserId, $tokenResp['access_token']);
+                }
+            } catch (Throwable $e) {
+                $last = $e;
+            }
         }
-        return self::persistFromShortLivedToken($adminUserId, $tokenResp['access_token']);
+        throw $last ?? new RuntimeException('Could not exchange Facebook code for an access token.');
     }
 
     private static function assertTokenForThisApp(string $accessToken): void
