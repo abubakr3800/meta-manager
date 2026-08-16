@@ -60,9 +60,11 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('is-active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
   btn.classList.add('is-active');
+  document.getElementById(`panel-${btn.dataset.tab}`).classList.add('is-active');
   if (btn.dataset.tab === 'ads' && !state.adAccounts.length) {
     loadAdAccounts().catch((err) => toast(err.message, true));
   }
+});
 
 // ----------------------------------------------------------------------
 // Modal (generic, reused by every CRUD form)
