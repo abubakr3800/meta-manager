@@ -31,6 +31,13 @@ final class MetaAPI
         return $stmt->fetchAll();
     }
 
+    public function syncPagesFromGraph(int $identityId): array
+    {
+        $token = MetaAuth::getDecryptedUserToken($identityId);
+        MetaAuth::syncPages($identityId, $token);
+        return $this->listPages($identityId);
+    }
+
     // ===================================================================
     // FACEBOOK PAGE POSTS — full CRUD
     // ===================================================================

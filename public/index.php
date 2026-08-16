@@ -82,6 +82,7 @@ if ($identityId) {
     <label class="page-select-label">Page
       <select id="pageSelect"><option value="">— Select a Page —</option></select>
     </label>
+    <button type="button" class="btn btn-ghost" id="btnSyncPages">Sync Pages</button>
   </section>
 
   <!-- ============================== POSTS ============================== -->

@@ -60,8 +60,9 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('is-active'));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
   btn.classList.add('is-active');
-  document.getElementById(`panel-${btn.dataset.tab}`).classList.add('is-active');
-});
+  if (btn.dataset.tab === 'ads' && !state.adAccounts.length) {
+    loadAdAccounts().catch((err) => toast(err.message, true));
+  }
 
 // ----------------------------------------------------------------------
 // Modal (generic, reused by every CRUD form)
@@ -105,15 +106,28 @@ modalBackdrop.addEventListener('click', (e) => {
 // ----------------------------------------------------------------------
 const pageSelect = document.getElementById('pageSelect');
 
-async function loadPages() {
-  const data = await api('api/pages.php');
+async function loadPages(refresh) {
+  const data = await api('api/pages.php' + (refresh ? '?refresh=1' : ''));
   state.pages = data.pages || [];
   pageSelect.innerHTML = '<option value="">— Select a Page —</option>' +
     state.pages.map(p => `<option value="${p.id}">${escapeHtml(p.page_name || p.fb_page_id)}</option>`).join('');
-  if (!data.connected) {
+  if (data.warning) {
+    toast(data.warning, true);
+  } else if (!data.connected) {
     toast('Connect your Meta account to load Pages.', true);
+  } else if (!state.pages.length) {
+    toast('No Pages yet. Reconnect Meta and select your Pages in the Facebook popup.', true);
   }
 }
+
+document.getElementById('btnSyncPages').addEventListener('click', async () => {
+  try {
+    await loadPages(true);
+    toast('Pages refreshed.');
+  } catch (err) {
+    toast(err.message, true);
+  }
+});
 
 pageSelect.addEventListener('change', () => {
   state.currentPageId = pageSelect.value || null;
@@ -388,8 +402,7 @@ leadsTbody.addEventListener('click', async (e) => {
 // ----------------------------------------------------------------------
 (async function init() {
   try {
-    await loadPages();
-    await loadAdAccounts();
+    await loadPages(true);
   } catch (err) {
     toast(err.message, true);
   }
