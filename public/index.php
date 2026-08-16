@@ -151,9 +151,6 @@ window.fbAsyncInit = function () {
     version: window.SC_META.version
   });
   FB.AppEvents.logPageView();
-  FB.getLoginStatus(function (response) {
-    statusChangeCallback(response, false);
-  });
 };
 (function (d, s, id) {
   var js, fjs = d.getElementsByTagName(s)[0];

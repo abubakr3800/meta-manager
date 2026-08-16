@@ -412,7 +412,7 @@ leadsTbody.addEventListener('click', async (e) => {
 // ----------------------------------------------------------------------
 (async function init() {
   try {
-    await loadPages(true);
+    await loadPages(false);
   } catch (err) {
     toast(err.message, true);
   }

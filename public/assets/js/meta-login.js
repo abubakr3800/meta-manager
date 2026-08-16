@@ -86,8 +86,7 @@
     FB.login(function (response) {
       statusChangeCallback(response, true);
     }, {
-      config_id: cfg.configId,
-      auth_type: 'rerequest'
+      config_id: cfg.configId
     });
   };
 

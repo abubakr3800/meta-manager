@@ -132,40 +132,70 @@ final class MetaAuth
         $expiresIn      = $longResp['expires_in'] ?? 5184000;
 
         $me = $graph->get('/me', ['access_token' => $longLivedToken, 'fields' => 'id,name']);
+        $scopes = self::fetchGrantedScopes($longLivedToken);
+        if (!self::hasBusinessScopes($scopes)) {
+            throw new RuntimeException(
+                'Facebook only granted public_profile — Login for Business did not apply. '
+                . 'Edit configuration ' . META_LOGIN_CONFIG_ID
+                . ': enable Pages as an asset and add pages_show_list. Then click Reconnect Meta, '
+                . 'complete the Facebook popup, and tick every Page.'
+            );
+        }
 
         $pdo = Database::pdo();
-        $stmt = $pdo->prepare(
-            'INSERT INTO meta_identities (admin_user_id, fb_user_id, fb_name, access_token_enc, token_expires_at, scopes)
-             VALUES (:admin, :fbid, :name, :tok, DATE_ADD(NOW(), INTERVAL :secs SECOND), :scopes)
-             ON DUPLICATE KEY UPDATE
-               fb_name = VALUES(fb_name),
-               access_token_enc = VALUES(access_token_enc),
-               token_expires_at = VALUES(token_expires_at),
-               scopes = VALUES(scopes)'
-        );
-        $stmt->execute([
-            'admin'  => $adminUserId,
-            'fbid'   => $me['id'],
-            'name'   => $me['name'] ?? null,
-            'tok'    => Encryption::encrypt($longLivedToken),
-            'secs'   => $expiresIn,
-            'scopes' => self::fetchGrantedScopes($longLivedToken),
-        ]);
+        $find = $pdo->prepare('SELECT id FROM meta_identities WHERE admin_user_id = :a ORDER BY id ASC LIMIT 1');
+        $find->execute(['a' => $adminUserId]);
+        $identityId = (int)$find->fetchColumn();
 
-        $identityId = (int)$pdo->lastInsertId();
-        if ($identityId === 0) {
-            $find = $pdo->prepare('SELECT id FROM meta_identities WHERE admin_user_id = :a AND fb_user_id = :f');
-            $find->execute(['a' => $adminUserId, 'f' => $me['id']]);
-            $identityId = (int)$find->fetchColumn();
+        if ($identityId > 0) {
+            $stmt = $pdo->prepare(
+                'UPDATE meta_identities
+                 SET fb_user_id = :fbid, fb_name = :name, access_token_enc = :tok,
+                     token_expires_at = DATE_ADD(NOW(), INTERVAL :secs SECOND), scopes = :scopes
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                'fbid'   => $me['id'],
+                'name'   => $me['name'] ?? null,
+                'tok'    => Encryption::encrypt($longLivedToken),
+                'secs'   => $expiresIn,
+                'scopes' => $scopes,
+                'id'     => $identityId,
+            ]);
+        } else {
+            $stmt = $pdo->prepare(
+                'INSERT INTO meta_identities (admin_user_id, fb_user_id, fb_name, access_token_enc, token_expires_at, scopes)
+                 VALUES (:admin, :fbid, :name, :tok, DATE_ADD(NOW(), INTERVAL :secs SECOND), :scopes)'
+            );
+            $stmt->execute([
+                'admin'  => $adminUserId,
+                'fbid'   => $me['id'],
+                'name'   => $me['name'] ?? null,
+                'tok'    => Encryption::encrypt($longLivedToken),
+                'secs'   => $expiresIn,
+                'scopes' => $scopes,
+            ]);
+            $identityId = (int)$pdo->lastInsertId();
         }
 
         try {
             self::syncPages($identityId, $longLivedToken);
         } catch (Throwable $e) {
-            // Identity is saved; missing pages_show_list shows up as #200 until they reconnect
+            // Identity is saved; missing pages_show_list shows up until they reconnect
         }
 
         return $identityId;
+    }
+
+    private static function hasBusinessScopes(string $scopes): bool
+    {
+        foreach (explode(',', strtolower($scopes)) as $scope) {
+            $scope = trim($scope);
+            if ($scope !== '' && $scope !== 'public_profile' && $scope !== 'email') {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function fetchGrantedScopes(string $userAccessToken): string

@@ -49,7 +49,12 @@ final class Session
             return null;
         }
         $stmt = Database::pdo()->prepare(
-            'SELECT id FROM meta_identities WHERE admin_user_id = :a ORDER BY updated_at DESC LIMIT 1'
+            'SELECT i.id FROM meta_identities i
+             LEFT JOIN meta_pages p ON p.meta_identity_id = i.id
+             WHERE i.admin_user_id = :a
+             GROUP BY i.id, i.updated_at
+             ORDER BY COUNT(p.id) DESC, i.updated_at DESC
+             LIMIT 1'
         );
         $stmt->execute(['a' => $adminId]);
         $id = $stmt->fetchColumn();

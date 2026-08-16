@@ -11,23 +11,32 @@ try {
     $warning = null;
 
     if ($refresh || empty($pages)) {
+        $cached = $pages;
         try {
             $pages = $api->syncPagesFromGraph($identityId);
-            if (empty($pages)) {
-                $scopes = '';
-                try {
-                    $scopes = MetaAuth::fetchGrantedScopes(MetaAuth::getDecryptedUserToken($identityId));
-                } catch (Throwable $e) {
-                    $scopes = '';
-                }
-                $warning = 'Facebook returned no Pages. Granted permissions: [' . ($scopes ?: 'none') . ']. Edit configuration ' . META_LOGIN_CONFIG_ID . ': enable Pages as an asset and pages_show_list. Then click Reconnect Meta and in the popup select your Business + every Page.';
-            } elseif (count($pages) === 1) {
-                $warning = 'Only 1 Page was granted. Facebook Login for Business includes only the Pages you tick in the popup. Click Reconnect Meta and select every Page (and the Business portfolio).';
-            }
         } catch (GraphApiException $e) {
+            $pages = $cached;
             $warning = $e->getCode() === 200
                 ? 'Missing pages_show_list. Add pages_show_list and pages_read_engagement to configuration ' . META_LOGIN_CONFIG_ID . ', then Reconnect Meta and tick your Pages in the Facebook dialog.'
                 : $e->getMessage();
+        }
+        if (empty($pages)) {
+            $pages = $cached;
+        }
+        if (empty($pages)) {
+            $scopes = '';
+            try {
+                $scopes = MetaAuth::fetchGrantedScopes(MetaAuth::getDecryptedUserToken($identityId));
+            } catch (Throwable $e) {
+                $scopes = '';
+            }
+            $warning = $warning ?: (
+                'Facebook returned no Pages. Granted permissions: [' . ($scopes ?: 'none') . ']. '
+                . 'Edit configuration ' . META_LOGIN_CONFIG_ID . ': enable Pages as an asset and pages_show_list. '
+                . 'Then click Reconnect Meta and in the popup select your Business + every Page.'
+            );
+        } elseif ($refresh && count($pages) === 1) {
+            $warning = $warning ?: 'Showing 1 saved Page. To add more, click Reconnect Meta and tick every Page in the Facebook popup.';
         }
     }
 
